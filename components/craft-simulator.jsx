@@ -32,13 +32,15 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const GANZAO_METHODS = dl.getGanzaoMethods();
   const teaIds = dl.TEA_IDS;
 
-  // ---- 嫩度偏差 ----
+  // ---- 嫩度偏差（名优茶档时以名优茶采摘标准为基准） ----
   const getTenderDelta = () => {
     if (!pickingSelection || !currentTea) return 0;
     const pick = dl.getPickingById(pickingSelection);
-    const ideal = dl.getPickingById(currentTea.idealPicking);
-    if (!pick || !ideal) return 0;
-    return pick.tenderLevel - ideal.tenderLevel;
+    const idealPick = dl.getPickingById(currentTea.idealPicking);
+    if (!pick || !idealPick) return 0;
+    const ftLv = typeof inferFamousPickingLevel === 'function' ? inferFamousPickingLevel() : null;
+    const idealLevel = ftLv != null ? ftLv : idealPick.tenderLevel;
+    return pick.tenderLevel - idealLevel;
   };
 
   // ---- 计算有效步骤参数（考虑嫩度偏差、杀青/干燥方式） ----
@@ -227,40 +229,99 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     }
   };
 
-  // ---- 采摘得分 ----
+  // ---- 从名优茶数据推断理想采摘嫩度（0-5），无法推断返回 null ----
+  // 优先读取 picking 字段，为空则扫 params 中的采摘相关行
+  const inferFamousPickingLevel = () => {
+    if (!selectedFamousTea) return null;
+    let text = String(selectedFamousTea.picking || '');
+    if (!text) {
+      const pl = dl.safeArr(selectedFamousTea.params, []);
+      for (const line of pl) {
+        if (/采摘|开面|嫩度|鲜叶|单芽|一芽/.test(String(line || ''))) text += ' ' + line;
+      }
+    }
+    if (!text) return null;
+    const rules = [
+      [0, /单芽|纯芽|肥壮芽头/],
+      [1, /一芽一叶/],
+      [2, /一芽二/],
+      [3, /开面|一芽三/],
+      [4, /一芽四|一芽五/],
+      [5, /粗老|碎茶|片茶/]
+    ];
+    for (const rule of rules) {
+      if (rule[1].test(text)) return rule[0];
+    }
+    return null;
+  };
+
+  // ---- 采摘得分（按茶类区分评分曲线） ----
   const calculatePickingScore = () => {
     if (!pickingSelection || !currentTea) return { score: 0, feedback: null };
 
     const pick = dl.getPickingById(pickingSelection);
-    const idealPick = dl.getPickingById(currentTea.idealPicking);
-    const tenderRange = currentTea.pickingTenderRange || [0, 5];
-    const tenderMin = tenderRange[0];
-    const tenderMax = tenderRange[1];
-
-    if (!pick || !idealPick) return { score: 60, feedback: { type: 'warning', text: '采摘标准无法判定，取默认分。', quality: -20 } };
+    if (!pick) return { score: 60, feedback: { type: 'warning', text: '采摘标准无法判定，取默认分。', quality: -20 } };
 
     const level = pick.tenderLevel;
-    const idealLevel = idealPick.tenderLevel;
-    const dist = Math.abs(level - idealLevel);
-    const range = Math.max(tenderMax - tenderMin, 2);
-    const score = Math.max(0, Math.round(95 - dist * dist * 15));
+    const teaId = currentTea.id;
+    const idealPick = dl.getPickingById(currentTea.idealPicking);
+    const idealLevel = idealPick ? idealPick.tenderLevel : 2;
+    const ftLevel = inferFamousPickingLevel();
 
-    let type, text;
-    if (dist === 0) {
-      type = 'success';
-      text = `采摘标准完美！${pick.name}正是${currentTea.name}的理想采摘标准，芽叶嫩度恰到好处。`;
-    } else if (level < idealLevel) {
-      type = 'warning';
-      text = `采摘偏嫩。${pick.name}比标准更细嫩，虽外形更秀丽但内含物稍欠，后续工艺需相应调整。`;
-    } else if (dist <= 1) {
-      type = 'warning';
-      text = `采摘稍偏成熟。${pick.name}比标准略老，滋味更醇厚但外形稍逊，需在后续工序中做相应调整。`;
+    let score, type, text, quality;
+
+    if (teaId === 'oolong') {
+      // 乌龙茶：成熟度适当最优（倒U型），峰=理想采摘（名优茶档可覆盖，如东方美人需嫩采）
+      const peak = ftLevel != null ? ftLevel : idealLevel;
+      const dist = Math.abs(level - peak);
+      score = Math.max(0, Math.round(95 - dist * dist * 15));
+      if (dist === 0) {
+        type = 'success';
+        text = `采摘标准完美！${pick.name}正合${ftLevel != null ? '该名优茶' : '乌龙茶'}成熟度要求，内含物充分，最适合做青形成花果香。`;
+      } else if (level < peak) {
+        type = 'warning';
+        text = `采摘偏嫩。带嫩芽过多，叶质柔嫩，做青时易损伤红变、香气欠熟——乌龙茶需采成熟新梢（开面采）。`;
+      } else {
+        type = 'warning';
+        text = `采摘偏成熟。叶质过老、内含物减少，做青反应迟钝，成茶滋味粗涩。`;
+      }
+      quality = -(100 - score);
+    } else if (teaId === 'reprocessed') {
+      // 再加工茶：茶坯嫩度依品类而异（花茶中档茶坯/紧压茶成熟料/袋泡茶粗老碎茶），按理想标准距离评分
+      const peak = ftLevel != null ? ftLevel : idealLevel;
+      const dist = Math.abs(level - peak);
+      score = Math.max(0, Math.round(95 - dist * dist * 15));
+      if (dist === 0) {
+        type = 'success';
+        text = `茶坯嫩度匹配！${pick.name}正合${currentTea.name}的原料（茶坯）要求。`;
+      } else if (dist <= 1) {
+        type = 'warning';
+        text = `茶坯嫩度基本匹配。${pick.name}与${currentTea.name}理想茶坯${idealPick ? '（' + idealPick.name + '）' : ''}接近，可正常再加工。`;
+      } else {
+        type = 'error';
+        text = `茶坯嫩度偏差较大！${pick.name}与${currentTea.name}的茶坯要求相差${dist}级，成茶品质明显受影响。`;
+      }
+      quality = -(100 - score);
     } else {
-      type = 'error';
-      text = `采摘偏差较大！${pick.name}与${currentTea.name}的标准采摘嫩度相差${dist}级，会严重影响最终品质。`;
+      // 绿茶/红茶/黄茶/白茶/黑茶：嫩度越高、品质潜质越高（单调递减，越嫩分越高）
+      score = Math.max(0, Math.round(100 - level * 15));
+      if (level <= 1) {
+        type = 'success';
+        text = `嫩度极佳！${pick.name}内含物丰富（氨基酸、可溶性糖含量高），是${currentTea.name}的高档原料，成茶鲜爽度与外形俱佳。`;
+      } else if (level === 2) {
+        type = 'success';
+        text = `嫩度良好。${pick.name}细嫩匀净，可制${currentTea.name}中高档茶，品质有保障。`;
+      } else if (level === 3) {
+        type = 'warning';
+        text = `嫩度一般。${pick.name}成熟度偏高、内含物下降，成茶档次相应降低，后续工艺建议按粗老原料调整。`;
+      } else {
+        type = 'error';
+        text = `原料偏老！${pick.name}纤维多、内含物少，制${currentTea.name}品质明显下降，需大幅调整后续工艺参数。`;
+      }
+      quality = -(100 - score);
     }
 
-    return { score, feedback: { type, text, quality: -(100 - score) } };
+    return { score, feedback: { type, text, quality } };
   };
 
   // ---- 杀青/干燥方式适合度 ----
@@ -802,7 +863,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
               </div>
             ))}
           </div>
-          <div className="param-hint">💡 {currentStep.hint || '请选择合适的采摘标准'}</div>
+          <div className="param-hint">💡 {(currentStep.hint || '请选择合适的采摘标准') + (selectedFamousTea && selectedFamousTea.picking ? ' 【' + selectedFamousTea.name + '采摘标准】' + String(selectedFamousTea.picking).slice(0, 140) : '')}</div>
         </div>
       );
     }
