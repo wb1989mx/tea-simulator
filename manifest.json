@@ -1,0 +1,57 @@
+{
+  "name": "制茶模拟器 · 六大茶类初加工工艺",
+  "short_name": "制茶模拟器",
+  "description": "六大茶类初加工工艺互动模拟系统，亲自动手体验制茶全过程，在动手操作中学习茶叶知识。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#FAF5EC",
+  "theme_color": "#5A8F5A",
+  "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["education", "lifestyle", "games"],
+  "icons": [
+    {
+      "src": "assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "工艺模拟",
+      "short_name": "制茶",
+      "description": "直接进入工艺模拟模块",
+      "url": "./index.html?page=craft",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "知识问答",
+      "short_name": "答题",
+      "description": "直接进入知识问答挑战",
+      "url": "./index.html?page=quiz",
+      "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}
