@@ -19,9 +19,13 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const [pickingSelection, setPickingSelection] = React.useState(null);
   const [selectedMethods, setSelectedMethods] = React.useState({});
   const [teaState, setTeaState] = React.useState(dl.getInitialTeaState(initialTeaId || 'green'));
+  const [famousTeaId, setFamousTeaId] = React.useState(null);
 
   // ---- 派生数据（防御性读取） ----
-  const currentTea = teaId ? dl.getTea(teaId) : null;
+  const baseTea = teaId ? dl.getTea(teaId) : null;
+  const selectedFamousTea = famousTeaId ? dl.getFamousTeaById(famousTeaId) : null;
+  // 名优茶参数档套用：用名优茶参数覆盖类级工序理想参数
+  const currentTea = baseTea ? applyFamousParams(baseTea, selectedFamousTea) : null;
   const steps = currentTea ? dl.safeArr(currentTea.steps, []) : [];
   const currentStep = steps[currentStepIndex] || null;
   const SHAQING_METHODS = dl.getShaqingMethods();
@@ -150,6 +154,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const selectTea = (id) => {
     const tea = dl.getTea(id);
     setTeaId(id);
+    setFamousTeaId(null);
     setCurrentStepIndex(0);
     setStepResults([]);
     setFeedback(null);
@@ -160,6 +165,21 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     setFinalScore(0);
     setFinalGrade('');
     setTeaState(dl.getInitialTeaState(id));
+  };
+
+  // ---- 切换名优茶参数档（保持茶类，重置流程；同档点击=重新开始） ----
+  const switchFamous = (fid) => {
+    setFamousTeaId(fid);
+    setCurrentStepIndex(0);
+    setStepResults([]);
+    setFeedback(null);
+    setShowResult(false);
+    setShowReport(false);
+    setPickingSelection(null);
+    setSelectedMethods({});
+    setFinalScore(0);
+    setFinalGrade('');
+    if (teaId) setTeaState(dl.getInitialTeaState(teaId));
   };
 
   // ---- 计算参数得分 ----
@@ -526,6 +546,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   // ---- 重新开始 ----
   const restart = () => {
     setTeaId(null);
+    setFamousTeaId(null);
     setCurrentStepIndex(0);
     setStepResults([]);
     setFeedback(null);
@@ -695,6 +716,62 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
               再来一次
             </button>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  // ---- 渲染名优茶参数档选择器 ----
+  const renderFamousPicker = () => {
+    if (!teaId) return null;
+    const famousList = dl.getFamousTeasByCategory(teaId);
+    if (!famousList.length) return null;
+    return (
+      <div style={{
+        marginBottom: 18, padding: '12px 16px', background: 'var(--bg-rice)',
+        border: '1px solid rgba(46,125,91,0.2)', borderRadius: 'var(--radius-md)'
+      }}>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 10, flexWrap: 'wrap', gap: 6
+        }}>
+          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-ink)' }}>
+            🍃 名优茶参数档
+          </span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-ink-muted)' }}>
+            {famousTeaId ? `已套用「${selectedFamousTea ? selectedFamousTea.name : ''}」工艺参数` : '使用通用工艺参数'}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+          <div
+            onClick={() => switchFamous(null)}
+            style={{
+              flex: '0 0 auto', padding: '8px 14px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+              fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap',
+              background: !famousTeaId ? 'var(--accent-jade)' : 'rgba(46,125,91,0.08)',
+              color: !famousTeaId ? '#fff' : 'var(--text-ink)',
+              border: !famousTeaId ? '1px solid var(--accent-jade)' : '1px solid rgba(46,125,91,0.2)'
+            }}
+          >
+            通用工艺
+          </div>
+          {famousList.map(f => (
+            <div
+              key={f.id}
+              onClick={() => switchFamous(f.id)}
+              title={(f.craftChain || '').slice(0, 80)}
+              style={{
+                flex: '0 0 auto', padding: '8px 14px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                fontSize: 'var(--fs-sm)', fontWeight: 600, whiteSpace: 'nowrap',
+                background: famousTeaId === f.id ? 'var(--accent-jade)' : 'rgba(46,125,91,0.08)',
+                color: famousTeaId === f.id ? '#fff' : 'var(--text-ink)',
+                border: famousTeaId === f.id ? '1px solid var(--accent-jade)' : '1px solid rgba(46,125,91,0.2)'
+              }}
+            >
+              {f.name}
+              <span style={{ fontSize: 'var(--fs-xs)', opacity: 0.75, marginLeft: 4 }}>{f.origin}</span>
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -965,17 +1042,49 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
 
   return (
     <div>
-      <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
         <button className="btn btn-ghost btn-sm" onClick={onBack || restart}>
           ← 返回
         </button>
         <h2 style={{ fontFamily: 'Noto Serif SC', fontSize: 'var(--fs-xl)' }}>
           {currentTea.name}
+          {selectedFamousTea && (
+            <span style={{ fontSize: 'var(--fs-base)', color: 'var(--accent-jade)', fontWeight: 600, marginLeft: 8 }}>
+              · {selectedFamousTea.name}档
+            </span>
+          )}
           <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-ink-muted)', fontWeight: 400, marginLeft: 8 }}>
             · {currentTea.ferment}
           </span>
         </h2>
       </div>
+
+      {renderFamousPicker()}
+
+      {selectedFamousTea && (
+        <div style={{
+          marginBottom: 18, padding: '12px 16px', background: 'rgba(46,125,91,0.07)',
+          borderLeft: '3px solid var(--accent-jade)', borderRadius: 'var(--radius-sm)',
+          fontSize: 'var(--fs-xs)', lineHeight: 1.8, color: 'var(--text-ink-light)'
+        }}>
+          <div style={{ marginBottom: 4 }}>
+            <strong style={{ color: 'var(--accent-jade)' }}>「{selectedFamousTea.name}」完整工艺链：</strong>
+            {selectedFamousTea.craftChain}
+          </div>
+          {selectedFamousTea.quality && (
+            <div>
+              <strong style={{ color: 'var(--accent-gold)' }}>品质风格：</strong>
+              {selectedFamousTea.quality}
+            </div>
+          )}
+          {selectedFamousTea.standards && selectedFamousTea.standards.length > 0 && (
+            <div style={{ marginTop: 2, color: 'var(--text-ink-muted)' }}>
+              <strong>标准依据：</strong>{selectedFamousTea.standards.slice(0, 3).join('；')}
+              {selectedFamousTea.standards.length > 3 ? ' 等' : ''}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="craft-layout">
         <div className="craft-main">
@@ -1144,7 +1253,9 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
             <div className={`result-grade ${finalGrade}`} style={{ color: gradeText[finalGrade].color }}>
               {gradeText[finalGrade].name}
             </div>
-            <div className="result-tea-name">{currentTea.name}</div>
+            <div className="result-tea-name">
+              {selectedFamousTea ? `${currentTea.name} · ${selectedFamousTea.name}` : currentTea.name}
+            </div>
             <div className="result-subtitle">综合得分 {finalScore} 分</div>
 
             <div className="result-comment">
@@ -1230,6 +1341,124 @@ function getSoupColorDescription(tea, state) {
   if (tea.id === 'red') return '红艳明亮';
   if (tea.id === 'dark') return '红浓明亮';
   return '汤色正常';
+}
+
+// ============================================================
+// 名优茶参数档套用：将名优茶参数行（"项目 | 参数 | 来源"）解析，
+// 按工序关键词映射到类级 steps，覆盖 idealRange/idealValue/paramUnit/hint
+// 参数行示例："杀青 | 锅温 200~240℃，投叶量 120~150g/锅 | DB33/T 239-2023"
+// ============================================================
+function applyFamousParams(tea, famousTea) {
+  if (!tea || !famousTea) return tea;
+  const dl = window.TeaDataLayer;
+  const params = dl.safeArr(famousTea.params, []);
+  if (!params.length) return tea;
+
+  const steps = dl.safeArr(tea.steps, []).map(s => ({
+    ...s,
+    effects: dl.safeObj(s.effects, {})
+  }));
+
+  const STEP_KEYWORDS = {
+    caizhai: ['采摘', '鲜叶'],
+    weidiao: ['萎凋', '摊放', '摊青'],
+    shaqing: ['杀青', '炒青', '蒸青', '青锅', '锅炒'],
+    rounian: ['揉捻', '揉切'],
+    menhuang: ['闷黄', '初包', '堆闷', '包黄'],
+    zuoqing: ['做青', '摇青', '晾青', '碰青'],
+    fajiao: ['发酵'],
+    wodui: ['渥堆', '堆闷'],
+    ganzao: ['干燥', '烘干', '烘焙', '晒干', '炒干', '辉锅'],
+    chabei: ['茶坯', '复火'],
+    yinhua: ['窨花', '窨制', '拌和'],
+    tonghua: ['通花'],
+    hongbei: ['烘焙', '烘青']
+  };
+
+  params.forEach(p => {
+    const rawParts = String(p || '').split('|').map(x => x.trim()).filter(Boolean);
+    const item = rawParts[0] || '';
+    if (!item || rawParts.length < 2) return;
+
+    // 参数列定位：项目名之后的 1~3 列中，取第一个含单位（℃/小时/分钟）且有数字的列
+    // （兼容 "项目|参数|来源" 与 "项目|设备|参数|说明" 两种表格式）
+    let val = '';
+    for (let i = 1; i < Math.min(rawParts.length, 4); i++) {
+      const cand = rawParts[i];
+      if (/(℃|°|温度|小时|分钟|min)/i.test(cand) && /\d/.test(cand)) { val = cand; break; }
+    }
+    if (!val) return;
+
+    // 按关键词找到目标工序
+    let target = null;
+    Object.keys(STEP_KEYWORDS).some(sid => {
+      if (STEP_KEYWORDS[sid].some(kw => item.includes(kw))) {
+        target = steps.find(s => s.id === sid) || null;
+        return !!target;
+      }
+      return false;
+    });
+    if (!target) return;
+
+    const rangeMatch = val.match(/(\d+(?:\.\d+)?)\s*[~～—–-]\s*(\d+(?:\.\d+)?)/);
+    if (rangeMatch) {
+      // 单位以数值范围后的字符为准（避免整行其他数值的单位干扰）
+      const afterUnit = val.slice(rangeMatch.index + rangeMatch[0].length, rangeMatch.index + rangeMatch[0].length + 6);
+      const isTemp = /[℃°]/.test(afterUnit);
+      const isHour = /小时|h\b/i.test(afterUnit);
+      const isMin = /分钟|min/i.test(afterUnit);
+
+      const lo0 = parseFloat(rangeMatch[1]);
+      const hi0 = parseFloat(rangeMatch[2]);
+      // 降序写法（如"240～200℃"表示 240 渐降至 200）时交换为升序区间
+      const lo = Math.min(lo0, hi0);
+      const hi = Math.max(lo0, hi0);
+      if (isTemp) {
+        target.paramUnit = '℃';
+        target.idealRange = [Math.round(lo), Math.round(hi)];
+        const curLo = target.paramMin == null ? lo : target.paramMin;
+        const curHi = target.paramMax == null ? hi : target.paramMax;
+        target.paramMin = Math.min(curLo, Math.round(lo) - 30);
+        target.paramMax = Math.max(curHi, Math.round(hi) + 30);
+        target.idealValue = Math.round((lo + hi) / 2);
+      } else if (isHour) {
+        target.paramUnit = '小时';
+        target.idealRange = [lo, hi];
+        const curLo = target.paramMin == null ? lo : target.paramMin;
+        const curHi = target.paramMax == null ? hi : target.paramMax;
+        target.paramMin = Math.max(1, Math.round(Math.min(curLo, lo * 0.5)));
+        target.paramMax = Math.round(Math.max(curHi, hi * 1.5));
+        target.idealValue = Math.round((lo + hi) / 2 * 10) / 10;
+      } else if (isMin) {
+        target.paramUnit = '分钟';
+        target.idealRange = [Math.round(lo), Math.round(hi)];
+        const curLo = target.paramMin == null ? lo : target.paramMin;
+        const curHi = target.paramMax == null ? hi : target.paramMax;
+        target.paramMin = Math.min(curLo, Math.round(lo) - 10);
+        target.paramMax = Math.max(curHi, Math.round(hi) + 20);
+        target.idealValue = Math.round((lo + hi) / 2);
+      }
+      target._hintNote = val;
+    } else if (!rangeMatch) {
+      // 单数值（如"干燥温度≤65℃"）：作为理想值参考
+      const single = val.match(/(\d+(?:\.\d+)?)/);
+      if (single && /[℃°]|温度/.test(val)) {
+        const v = parseFloat(single[1]);
+        target.idealValue = v;
+        target._hintNote = val;
+      }
+    }
+  });
+
+  // 将名优茶参数说明并入 hint，方便学习者对照
+  steps.forEach(s => {
+    if (s._hintNote) {
+      s.hint = (s.hint ? s.hint + ' ' : '') + '【名优茶参数】' + s._hintNote;
+      delete s._hintNote;
+    }
+  });
+
+  return { ...tea, steps };
 }
 
 window.CraftSimulator = CraftSimulator;

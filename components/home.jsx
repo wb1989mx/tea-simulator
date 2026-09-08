@@ -1,7 +1,7 @@
 // 首页组件
 function HomePage({ onNavigate, progress }) {
   const teaData = window.TEA_DATA;
-  const teaIds = ['green', 'white', 'yellow', 'oolong', 'red', 'dark'];
+  const teaIds = (window.TeaDataLayer && window.TeaDataLayer.TEA_IDS) || Object.keys(teaData);
   
   const features = [
     {
@@ -22,7 +22,7 @@ function HomePage({ onNavigate, progress }) {
       key: 'library',
       icon: '📖',
       title: '茶叶图鉴',
-      desc: '六大茶类完整资料卡：工艺、代表名茶、品质特征、品饮建议',
+      desc: '七大茶类完整资料卡：工艺、名优茶参数、品质特征、品饮建议',
       color: 'var(--accent-gold)'
     },
     {

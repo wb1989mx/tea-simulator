@@ -2,7 +2,7 @@
 function Achievements({ onBack, progress }) {
   const teaData = window.TEA_DATA;
   const achievements = window.ACHIEVEMENTS;
-  const teaIds = ['green', 'white', 'yellow', 'oolong', 'red', 'dark'];
+  const teaIds = (window.TeaDataLayer && window.TeaDataLayer.TEA_IDS) || Object.keys(teaData);
   
   const getGradeLabel = (score) => {
     if (score >= 95) return '特级';
