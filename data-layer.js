@@ -23,8 +23,8 @@ function safeObj(val, fallback) {
   return (val && typeof val === 'object' && !Array.isArray(val)) ? val : (fallback || {});
 }
 
-// ---- 六大茶类 ID 常量 ----
-const TEA_IDS = ['green', 'white', 'yellow', 'oolong', 'red', 'dark'];
+// ---- 七大茶类 ID 常量（GB/T 30766-2014 口径，含再加工茶）----
+const TEA_IDS = ['green', 'white', 'yellow', 'oolong', 'red', 'dark', 'reprocessed'];
 
 // ---- 茶叶数据安全访问 ----
 function getTea(id) {
@@ -52,8 +52,22 @@ function getTea(id) {
     aroma: '',
     leafBase: '',
     representative: [],
+    famousTeas: [],
     tips: ''
   });
+}
+
+// ---- 名优茶数据安全访问（升级数据层 v2）----
+function getFamousTeas() {
+  return safeArr(window.FAMOUS_TEAS, []);
+}
+
+function getFamousTeaById(id) {
+  return getFamousTeas().find(t => t.id === id) || null;
+}
+
+function getFamousTeasByCategory(catId) {
+  return getFamousTeas().filter(t => t.category === catId);
 }
 
 function getAllTeas() {
@@ -223,6 +237,9 @@ window.TeaDataLayer = {
   safeCalcStepAdjustments,
   getQuizQuestions,
   getAchievements,
+  getFamousTeas,
+  getFamousTeaById,
+  getFamousTeasByCategory,
   getInitialTeaState,
   getGradeInfo,
   loadProgress,
