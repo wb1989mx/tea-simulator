@@ -3,6 +3,90 @@
 // 使用 TeaDataLayer 安全访问数据，字段缺失时不崩溃
 // ============================================================
 
+// ---- 环境前提背景（教学参考值） ----
+// 每个环境含天气特征与对各工序的合理性影响；工序影响系数 >1 表示需延长/提高，
+// <1 表示需缩短/降低；envNote 用于每工序显示的环境合理性说明。
+const ENVIRONMENTS = [
+  {
+    id: 'sunny', name: '晴天', icon: '☀️',
+    temp: '25℃', humidity: '55%',
+    desc: '阳光充足，空气干燥，最适自然萎凋与晒青。',
+    stepAdjust: {
+      weidiao: { timeScale: 1, note: '自然萎凋条件极佳，可薄摊日晒，日光萎凋 20~40 分钟。' },
+      shaiqing: { timeScale: 1, note: '晒青理想天气，日光萎凋 30~60 分钟恰到好处。' },
+      fajiao: { timeScale: 1, note: '温度湿度适中，发酵进程平稳。' },
+      wodui: { timeScale: 1, note: '渥堆温湿度适中，可按标准时长堆闷。' },
+      ganzao: { timeScale: 1, note: '可自然晒干或正常烘干，注意翻动均匀。' },
+      shaqing: { timeScale: 1, note: '鲜叶含水正常，杀青按标准参数执行。' }
+    }
+  },
+  {
+    id: 'cloudy', name: '多云', icon: '⛅',
+    temp: '22℃', humidity: '65%',
+    desc: '天气温和，多数工序可按标准执行，萎凋略慢。',
+    stepAdjust: {
+      weidiao: { timeScale: 1.15, note: '光照不足，萎凋时间需延长约 15%，或改用室内自然萎凋。' },
+      shaiqing: { timeScale: 1.2, note: '晒青效果一般，需延长晒青时间或转室内萎凋。' },
+      fajiao: { timeScale: 1, note: '环境温和，发酵正常。' },
+      wodui: { timeScale: 1, note: '渥堆正常进行。' },
+      ganzao: { timeScale: 1.1, note: '空气湿度偏高，干燥时间略延长，注意排湿。' },
+      shaqing: { timeScale: 1, note: '杀青不受影响，按标准执行。' }
+    }
+  },
+  {
+    id: 'overcast', name: '阴天', icon: '☁️',
+    temp: '20℃', humidity: '72%',
+    desc: '无日照，湿度偏高，萎凋与干燥明显变慢。',
+    stepAdjust: {
+      weidiao: { timeScale: 1.3, note: '无日照且湿度大，萎凋需大幅延长，建议加温萎凋（28~32℃）。' },
+      shaiqing: { timeScale: 1.4, note: '不宜晒青，须改用室内萎凋或加温萎凋。' },
+      fajiao: { timeScale: 1.1, note: '湿度偏高，发酵略快，注意观察叶色。' },
+      wodui: { timeScale: 1, note: '渥堆保温保湿有利，正常进行。' },
+      ganzao: { timeScale: 1.2, note: '必须烘干，不可晒干，干燥时间延长。' },
+      shaqing: { timeScale: 1, note: '鲜叶含水略高，杀青时间可稍延长 5%~10%。' }
+    }
+  },
+  {
+    id: 'rainy', name: '雨天', icon: '🌧️',
+    temp: '18℃', humidity: '88%',
+    desc: '空气潮湿，鲜叶表面带水，各工序均需调整。',
+    stepAdjust: {
+      weidiao: { timeScale: 1.5, note: '鲜叶含水高，必须加温萎凋（30~35℃）并延长 50% 时间，注意通风。' },
+      shaiqing: { timeScale: 1.6, note: '严禁晒青！鲜叶带水易闷红，须改室内加温萎凋。' },
+      fajiao: { timeScale: 1.15, note: '湿度大发酵加快，勤观察，防止发酵过度。' },
+      wodui: { timeScale: 1.1, note: '雨天闷热，渥堆升温快，注意翻堆散热。' },
+      ganzao: { timeScale: 1.3, note: '必须烘干，先低温慢烘去水，防闷黄褐变。' },
+      shaqing: { timeScale: 1.1, note: '鲜叶含水高，杀青时间延长 10%，温度略高以利排水汽。' }
+    }
+  },
+  {
+    id: 'cold', name: '低温', icon: '❄️',
+    temp: '8℃', humidity: '70%',
+    desc: '气温低，酶活性弱，发酵与渥堆需保温加时。',
+    stepAdjust: {
+      weidiao: { timeScale: 1.2, note: '低温失水慢，萎凋延长，建议加温萎凋或加大摊叶厚度。' },
+      shaiqing: { timeScale: 1.2, note: '低温晒青效果差，需延长时间或改加温萎凋。' },
+      fajiao: { timeScale: 1.35, note: '低温抑制酶活，发酵需保温（28~30℃）并延长约 35% 时间。' },
+      wodui: { timeScale: 1.3, note: '低温渥堆升温难，需加厚堆高、覆盖保温，延长渥堆时间。' },
+      ganzao: { timeScale: 1.1, note: '低温干燥略慢，按标准执行即可。' },
+      shaqing: { timeScale: 1, note: '鲜叶低温采后含水正常，杀青不受明显影响。' }
+    }
+  },
+  {
+    id: 'hot_dry', name: '高温干燥', icon: '🔥',
+    temp: '33℃', humidity: '40%',
+    desc: '气温高、空气干，鲜叶失水过快，需遮阴保湿。',
+    stepAdjust: {
+      weidiao: { timeScale: 0.8, note: '高温干燥失水过快，需遮阴薄摊、缩短萎凋时间，防失水不匀。' },
+      shaiqing: { timeScale: 0.8, note: '日晒强度大，缩短晒青时间并勤翻，防灼伤叶缘。' },
+      fajiao: { timeScale: 0.85, note: '高温发酵快，缩短时间，防发酵过度酸变。' },
+      wodui: { timeScale: 0.9, note: '高温渥堆升温快，降低堆高、及时翻堆。' },
+      ganzao: { timeScale: 0.9, note: '空气干燥利于干燥，注意控制温度防焦。' },
+      shaqing: { timeScale: 1, note: '高温天鲜叶易失水，采摘后尽快摊放、及时杀青。' }
+    }
+  }
+];
+
 function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const dl = window.TeaDataLayer;
 
@@ -10,6 +94,9 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const [teaId, setTeaId] = React.useState(initialTeaId || null);
   const [currentStepIndex, setCurrentStepIndex] = React.useState(0);
   const [paramValue, setParamValue] = React.useState(0);
+  const [timeParamValue, setTimeParamValue] = React.useState(0);
+  const [environment, setEnvironment] = React.useState(null);
+  const [showEnvPicker, setShowEnvPicker] = React.useState(false);
   const [stepResults, setStepResults] = React.useState([]);
   const [feedback, setFeedback] = React.useState(null);
   const [showResult, setShowResult] = React.useState(false);
@@ -121,6 +208,42 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
       }
     }
 
+    // 环境前提影响（时间维度：天气决定萎凋/发酵/渥堆/干燥的合理时长）
+    const envAdj = getEnvAdjust(step.id || '');
+    if (envAdj && envAdj.timeScale && envAdj.timeScale !== 1) {
+      if (Array.isArray(step.idealTimeRange) && step.idealTimeRange.length === 2) {
+        const tMid = (step.idealTimeRange[0] + step.idealTimeRange[1]) / 2;
+        const tHalf = (step.idealTimeRange[1] - step.idealTimeRange[0]) / 2;
+        const tNm = tMid * envAdj.timeScale;
+        const tNh = tHalf * envAdj.timeScale;
+        step.idealTimeRange = [Math.round(tNm - tNh), Math.round(tNm + tNh)];
+        if (step.idealTimeValue != null) step.idealTimeValue = Math.round(step.idealTimeValue * envAdj.timeScale * 10) / 10;
+      } else if (step.paramType === 'time' && Array.isArray(step.idealRange) && step.idealRange.length === 2) {
+        const tMid = (step.idealRange[0] + step.idealRange[1]) / 2;
+        const tHalf = (step.idealRange[1] - step.idealRange[0]) / 2;
+        const tNm = tMid * envAdj.timeScale;
+        const tNh = tHalf * envAdj.timeScale;
+        step.idealRange = [Math.round(tNm - tNh), Math.round(tNm + tNh)];
+        if (step.idealValue != null) step.idealValue = Math.round(step.idealValue * envAdj.timeScale * 10) / 10;
+      }
+    }
+
+    // 滑块尺度必须包含理想区间（含偏移后），确保最适区间始终可选
+    if (Array.isArray(step.idealRange) && step.idealRange.length === 2) {
+      const half = Math.max((step.idealRange[1] - step.idealRange[0]) * 1.2, 10);
+      const needMin = Math.floor(step.idealRange[0] - half * 0.5);
+      const needMax = Math.ceil(step.idealRange[1] + half * 0.5);
+      if (step.paramMin == null || step.paramMin > needMin) step.paramMin = needMin;
+      if (step.paramMax == null || step.paramMax < needMax) step.paramMax = needMax;
+    }
+    if (Array.isArray(step.idealTimeRange) && step.idealTimeRange.length === 2) {
+      const half = Math.max((step.idealTimeRange[1] - step.idealTimeRange[0]) * 1.2, 2);
+      const needMin = Math.floor(step.idealTimeRange[0] - half * 0.5);
+      const needMax = Math.ceil(step.idealTimeRange[1] + half * 0.5);
+      if (step.timeMin == null || step.timeMin > needMin) step.timeMin = needMin;
+      if (step.timeMax == null || step.timeMax < needMax) step.timeMax = needMax;
+    }
+
     return step;
   };
 
@@ -149,14 +272,24 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
       const pMax = currentStep.paramMax || 100;
       setParamValue(pMin + Math.floor((pMax - pMin) / 2));
     }
+    // 时间参数初始化
+    if (currentStep.idealTimeRange && currentStep.idealTimeRange.length === 2) {
+      const tMin = currentStep.timeMin != null ? currentStep.timeMin : currentStep.idealTimeRange[0];
+      const tMax = currentStep.timeMax != null ? currentStep.timeMax : currentStep.idealTimeRange[1];
+      setTimeParamValue(Math.round((tMin + tMax) / 2));
+    } else {
+      setTimeParamValue(0);
+    }
     setFeedback(null);
-  }, [currentStepIndex, teaId]);
+  }, [currentStepIndex, teaId, environment]);
 
-  // ---- 选择茶类 ----
+  // ---- 选择茶类（选定后先设定环境前提背景） ----
   const selectTea = (id) => {
     const tea = dl.getTea(id);
     setTeaId(id);
     setFamousTeaId(null);
+    setEnvironment(null);
+    setShowEnvPicker(true);
     setCurrentStepIndex(0);
     setStepResults([]);
     setFeedback(null);
@@ -184,6 +317,14 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     if (teaId) setTeaState(dl.getInitialTeaState(teaId));
   };
 
+  // ---- 当前环境对象与工序影响 ----
+  const getEnv = () => ENVIRONMENTS.find(e => e.id === environment) || null;
+  const getEnvAdjust = (stepId) => {
+    const env = getEnv();
+    if (!env || !stepId) return null;
+    return env.stepAdjust[stepId] || null;
+  };
+
   // ---- 计算参数得分 ----
   const calculateParamScore = (step, value, methodSuitability = 1) => {
     const rangeArr = step.idealRange || [0, 100];
@@ -205,6 +346,54 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     }
 
     return Math.round(baseScore * methodSuitability);
+  };
+
+  // ---- 环境对工序的适配系数（1=适配；受环境牵制越大系数越低） ----
+  const getEnvSuitability = (stepId) => {
+    const env = getEnv();
+    if (!env || !stepId) return 1;
+    const adj = env.stepAdjust[stepId];
+    if (!adj) return 1;
+    const scale = adj.timeScale || 1;
+    const penalty = Math.min(Math.abs(scale - 1) * 0.18, 0.15);
+    return Math.max(0.85, 1 - penalty);
+  };
+
+  // ---- 双参数评分（温度 + 时间；无时间参数时退化为单参数） ----
+  const calcStepScore = (step, tempVal, timeVal, methodSuitability = 1) => {
+    const tScore = calculateParamScore(step, tempVal, methodSuitability);
+    if (step.idealTimeRange && step.idealTimeRange.length === 2) {
+      const tStep = {
+        ...step,
+        idealRange: step.idealTimeRange,
+        idealValue: step.idealTimeValue,
+        paramMin: step.timeMin,
+        paramMax: step.timeMax,
+        paramUnit: step.timeUnit || '分钟'
+      };
+      const timeScore = calculateParamScore(tStep, timeVal, 1);
+      return { score: Math.round(tScore * 0.6 + timeScore * 0.4), tScore, timeScore };
+    }
+    return { score: tScore, tScore, timeScore: null };
+  };
+
+  // ---- 双参数反馈（温度 + 时间说明） ----
+  const getStepFeedback = (step, tempVal, timeVal, score, extraInfo = {}) => {
+    const tFb = getFeedback(step, tempVal, score, extraInfo);
+    if (step.idealTimeRange && step.idealTimeRange.length === 2) {
+      const tMin = step.idealTimeRange[0];
+      const tMax = step.idealTimeRange[1];
+      let timeText;
+      if (timeVal < tMin) {
+        timeText = `时间${timeVal}${step.timeUnit || '分钟'}偏短（理想 ${tMin}-${tMax}${step.timeUnit || '分钟'}）`;
+      } else if (timeVal > tMax) {
+        timeText = `时间${timeVal}${step.timeUnit || '分钟'}偏长（理想 ${tMin}-${tMax}${step.timeUnit || '分钟'}）`;
+      } else {
+        timeText = `时间${timeVal}${step.timeUnit || '分钟'}合适`;
+      }
+      return { ...tFb, text: tFb.text + ' ｜ ' + timeText };
+    }
+    return tFb;
   };
 
   // ---- 获取反馈信息 ----
@@ -284,6 +473,25 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
       } else {
         type = 'warning';
         text = `采摘偏成熟。叶质过老、内含物减少，做青反应迟钝，成茶滋味粗涩。`;
+      }
+      quality = -(100 - score);
+    } else if (teaId === 'dark') {
+      // 黑茶：按黑毛茶嫩度等级判定，单芽/过嫩制作效果差，一芽二三叶最佳（倒U型）
+      const peak = 2; // 一芽二三叶 = 高档黑毛茶（天尖/特级）基准
+      const dist = Math.abs(level - peak);
+      score = Math.max(0, Math.round(95 - dist * dist * 15));
+      if (dist === 0) {
+        type = 'success';
+        text = `采摘标准最佳！${pick.name}正是高档黑毛茶（如天尖）的嫩度基准，芽叶内含物与纤维比例最适合渥堆发酵。`;
+      } else if (level < peak) {
+        type = 'warning';
+        text = `采摘偏嫩。${pick.name}过于细嫩，单芽类原料在渥堆中易粘结成团、发酵不匀，制作效果并不理想——黑茶宜采一芽二三叶。`;
+      } else if (level === 4) {
+        type = 'warning';
+        text = `采摘偏成熟。${pick.name}为低档黑毛茶（如生尖）原料，内含物减少，需更长渥堆时间、成茶品质档次下降。`;
+      } else {
+        type = 'error';
+        text = `原料过于粗老！${pick.name}纤维化明显，渥堆转化物质不足，成茶粗涩、水薄，不建议制作高档黑茶。`;
       }
       quality = -(100 - score);
     } else if (teaId === 'reprocessed') {
@@ -489,14 +697,18 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const executeShaiqingStep = () => {
     if (!selectedMethods.shaqing) return;
     const suitability = getShaiqingSuitability(selectedMethods.shaqing);
-    const score = calculateParamScore(effectiveStep, paramValue, suitability);
+    const envSuit = getEnvSuitability(currentStep.id);
+    const { score: rawScore } = calcStepScore(effectiveStep, paramValue, timeParamValue, suitability);
+    const score = Math.round(rawScore * envSuit);
     const method = SHAQING_METHODS[selectedMethods.shaqing];
     const methodText = method ? `（${method.name}杀青，${method.aromaType || ''}）` : '';
 
-    const fb = getFeedback(effectiveStep, paramValue, score, { methodBonus: method });
+    const fb = getStepFeedback(effectiveStep, paramValue, timeParamValue, score, { methodBonus: method });
     if (suitability < 0.9 && currentTea.bestShaiqingMethod && selectedMethods.shaqing !== currentTea.bestShaiqingMethod) {
       fb.text = fb.text + ' 注：此杀青方式对该茶类并非最佳，香气与色泽会受影响。';
     }
+    const envAdj = getEnvAdjust(currentStep.id);
+    if (envAdj && envAdj.note) fb.text = fb.text + ' ｜ 环境：' + envAdj.note;
 
     setFeedback(fb);
     setStepResults(prev => [...prev, { stepId: currentStep.id, score, feedback: fb, method: selectedMethods.shaqing }]);
@@ -523,13 +735,17 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const executeGanzaoStep = () => {
     if (!selectedMethods.ganzao) return;
     const suitability = getGanzaoSuitability(selectedMethods.ganzao);
-    const score = calculateParamScore(effectiveStep, paramValue, suitability);
+    const envSuit = getEnvSuitability(currentStep.id);
+    const { score: rawScore } = calcStepScore(effectiveStep, paramValue, timeParamValue, suitability);
+    const score = Math.round(rawScore * envSuit);
     const method = GANZAO_METHODS[selectedMethods.ganzao];
 
-    const fb = getFeedback(effectiveStep, paramValue, score, { methodBonus: method });
+    const fb = getStepFeedback(effectiveStep, paramValue, timeParamValue, score, { methodBonus: method });
     if (suitability < 0.9 && currentTea.bestGanzaoMethod && selectedMethods.ganzao !== currentTea.bestGanzaoMethod) {
       fb.text = fb.text + ' 注：此干燥方式对该茶类并非最佳。';
     }
+    const envAdj = getEnvAdjust(currentStep.id);
+    if (envAdj && envAdj.note) fb.text = fb.text + ' ｜ 环境：' + envAdj.note;
 
     setFeedback(fb);
     setStepResults(prev => [...prev, { stepId: currentStep.id, score, feedback: fb, method: selectedMethods.ganzao }]);
@@ -578,9 +794,13 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
       executeGanzaoStep();
       return;
     }
-    // 普通参数步骤
-    const score = calculateParamScore(effectiveStep, paramValue);
-    const fb = getFeedback(effectiveStep, paramValue, score);
+    // 普通参数步骤（温度 / 时间 / 次数；含时间参数时双条评分）
+    const envSuit = getEnvSuitability(currentStep.id);
+    const { score: rawScore } = calcStepScore(effectiveStep, paramValue, timeParamValue);
+    const score = Math.round(rawScore * envSuit);
+    const fb = getStepFeedback(effectiveStep, paramValue, timeParamValue, score);
+    const envAdj = getEnvAdjust(currentStep.id);
+    if (envAdj && envAdj.note) fb.text = fb.text + ' ｜ 环境：' + envAdj.note;
     setFeedback(fb);
     setStepResults(prev => [...prev, { stepId: currentStep.id, score, feedback: fb }]);
     updateTeaState(currentTea, currentStepIndex, paramValue, score);
@@ -838,6 +1058,47 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     );
   };
 
+  // ---- 渲染时间控制条（步骤含时间参数时显示，与温度条并行） ----
+  const renderTimeControl = (step) => {
+    if (!step || !step.idealTimeRange || step.idealTimeRange.length !== 2) return null;
+    const tMin = step.timeMin != null ? step.timeMin : step.idealTimeRange[0];
+    const tMax = step.timeMax != null ? step.timeMax : step.idealTimeRange[1];
+    const timeLabel = String(step.paramName || '时间')
+      .replace('温度', '时间').replace('锅温', '时间').replace('叶温', '时间').replace('温', '时间');
+    return (
+      <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px dashed rgba(46,125,91,0.25)' }}>
+        <div className="param-label">
+          <span className="param-label-text">⏱ {timeLabel}</span>
+          <span className="param-value">
+            {timeParamValue}{step.timeUnit || '分钟'}
+          </span>
+        </div>
+        <input
+          type="range"
+          className="param-slider"
+          min={tMin}
+          max={tMax}
+          value={timeParamValue}
+          onChange={(e) => setTimeParamValue(parseInt(e.target.value))}
+          disabled={!!feedback}
+        />
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 'var(--fs-xs)', color: 'var(--text-ink-muted)' }}>
+          <span>{tMin}{step.timeUnit || '分钟'}</span>
+          <span style={{ color: 'var(--accent-jade)' }}>
+            理想时间：{step.idealTimeRange[0]}-{step.idealTimeRange[1]}{step.timeUnit || '分钟'}
+            {getTenderDelta() !== 0 && (
+              <span style={{ color: 'var(--accent-gold)', marginLeft: 6 }}>（已随嫩度调整）</span>
+            )}
+            {getEnvAdjust(step.id) && getEnvAdjust(step.id).timeScale !== 1 && (
+              <span style={{ color: 'var(--accent-cinnabar)', marginLeft: 6 }}>（已随环境调整）</span>
+            )}
+          </span>
+          <span>{tMax}{step.timeUnit || '分钟'}</span>
+        </div>
+      </div>
+    );
+  };
+
   // ---- 渲染参数控制区 ----
   const renderParamControl = () => {
     if (!currentStep) return null;
@@ -940,6 +1201,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
               </span>
               <span>{effectiveStep.paramMax || 100}{effectiveStep.paramUnit || ''}</span>
             </div>
+            {renderTimeControl(effectiveStep)}
           </div>
         </div>
       );
@@ -1014,6 +1276,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
               </span>
               <span>{effectiveStep.paramMax || 100}{effectiveStep.paramUnit || ''}</span>
             </div>
+            {renderTimeControl(effectiveStep)}
           </div>
         </div>
       );
@@ -1048,6 +1311,7 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
           </span>
           <span>{effectiveStep.paramMax || 100}{effectiveStep.paramUnit || ''}</span>
         </div>
+        {renderTimeControl(effectiveStep)}
       </div>
     );
   };
@@ -1101,6 +1365,55 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     );
   }
 
+  // 环境前提背景选择界面（制茶开始前）
+  if (showEnvPicker && teaId && currentTea) {
+    return (
+      <div className="craft-select-page">
+        <div style={{ marginBottom: 24, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setTeaId(null); setShowEnvPicker(false); }}>
+            ← 返回
+          </button>
+          <h2 style={{ fontFamily: 'Noto Serif SC', fontSize: 'var(--fs-xl)' }}>设定制茶环境</h2>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-ink-muted)' }}>
+            {currentTea.name} · 制茶开始前先确定今日天气
+          </span>
+        </div>
+
+        <div className="tea-select-header">
+          <h2 className="tea-select-title">选择环境前提背景</h2>
+          <p className="tea-select-desc">天气与温湿度直接决定萎凋、晒青、发酵、渥堆、干燥等工序的合理参数——环境设定后，每道工序都会给出相应的调整提示。</p>
+        </div>
+
+        <div className="tea-select-grid">
+          {ENVIRONMENTS.map(env => (
+            <div
+              key={env.id}
+              className="tea-select-card"
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                setEnvironment(env.id);
+                setShowEnvPicker(false);
+                setCurrentStepIndex(0);
+                setStepResults([]);
+                setFeedback(null);
+                setPickingSelection(null);
+                setSelectedMethods({});
+                setFinalScore(0);
+                setFinalGrade('');
+              }}
+            >
+              <div className="tea-select-icon" style={{ background: 'linear-gradient(135deg,#7A9E7E,#4A6B50)', fontSize: 22 }}>
+                {env.icon}
+              </div>
+              <div className="tea-select-name">{env.name} · {env.temp} / {env.humidity}</div>
+              <div className="tea-select-ferment" style={{ marginTop: 8, lineHeight: 1.7 }}>{env.desc}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 16 }}>
@@ -1119,6 +1432,23 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
           </span>
         </h2>
       </div>
+
+      {/* 环境前提状态条：天气 + 温湿度 + 当前工序环境影响 */}
+      {getEnv() && (
+        <div style={{
+          marginBottom: 14, padding: '10px 14px', background: 'rgba(46,125,91,0.06)',
+          border: '1px solid rgba(46,125,91,0.18)', borderRadius: 'var(--radius-sm)',
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap'
+        }}>
+          <span style={{ fontSize: 'var(--fs-base)' }}>{getEnv().icon}</span>
+          <span style={{ fontWeight: 700, fontSize: 'var(--fs-sm)' }}>
+            {getEnv().name} {getEnv().temp} · 湿度 {getEnv().humidity}
+          </span>
+          <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-ink-muted)', flex: '1 1 220px', lineHeight: 1.6 }}>
+            {currentStep ? (getEnvAdjust(currentStep.id) ? getEnvAdjust(currentStep.id).note : getEnv().desc) : getEnv().desc}
+          </span>
+        </div>
+      )}
 
       {renderFamousPicker()}
 
