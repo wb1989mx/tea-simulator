@@ -124,6 +124,12 @@ window.TEA_DATA = {
         paramMax: 320,
         idealRange: [200, 260],
         idealValue: 230,
+        timeUnit: '分钟',
+        timeMin: 2,
+        timeMax: 8,
+        idealTimeRange: [3, 5],
+        idealTimeValue: 4,
+
         hint: '锅炒杀青温度约200-260℃，先高后低。',
         effects: {
           tooLow: { text: '温度过低，酶活性未被完全破坏，茶叶会变红变味，形成"红梗红叶"。', quality: -30 },
@@ -161,6 +167,12 @@ window.TEA_DATA = {
         paramMax: 180,
         idealRange: [90, 120],
         idealValue: 105,
+        timeUnit: '分钟',
+        timeMin: 10,
+        timeMax: 60,
+        idealTimeRange: [20, 40],
+        idealTimeValue: 30,
+
         hint: '毛火高温快速，足火低温慢烘。',
         effects: {
           tooLow: { text: '干燥不足，含水量偏高，易发霉变质，不耐贮存。', quality: -20 },
@@ -242,6 +254,12 @@ window.TEA_DATA = {
         paramMax: 120,
         idealRange: [60, 80],
         idealValue: 70,
+        timeUnit: '小时',
+        timeMin: 4,
+        timeMax: 24,
+        idealTimeRange: [8, 15],
+        idealTimeValue: 12,
+
         hint: '低温慢烘，保护白毫和香气。',
         effects: {
           tooLow: { text: '干燥不充分，含水量高，易变质。', quality: -20 },
@@ -304,6 +322,12 @@ window.TEA_DATA = {
         paramMax: 280,
         idealRange: [180, 220],
         idealValue: 200,
+        timeUnit: '分钟',
+        timeMin: 2,
+        timeMax: 8,
+        idealTimeRange: [3, 5],
+        idealTimeValue: 4,
+
         hint: '黄茶杀青温度略低于绿茶。',
         effects: {
           tooLow: { text: '杀青不足，酶活性保留过多，闷黄时过度发酵。', quality: -20 },
@@ -360,6 +384,12 @@ window.TEA_DATA = {
         paramMax: 160,
         idealRange: [80, 110],
         idealValue: 95,
+        timeUnit: '分钟',
+        timeMin: 15,
+        timeMax: 90,
+        idealTimeRange: [30, 60],
+        idealTimeValue: 45,
+
         hint: '干燥温度适中，固定黄茶品质。',
         effects: {
           tooLow: { text: '干燥不足，易受潮变质。', quality: -15 },
@@ -459,6 +489,12 @@ window.TEA_DATA = {
         paramMax: 320,
         idealRange: [220, 280],
         idealValue: 250,
+        timeUnit: '分钟',
+        timeMin: 2,
+        timeMax: 10,
+        idealTimeRange: [4, 8],
+        idealTimeValue: 6,
+
         hint: '乌龙茶杀青温度高，"高温短时"，迅速钝化酶活性。',
         effects: {
           tooLow: { text: '杀青不足，酶未完全钝化，继续发酵影响品质。', quality: -20 },
@@ -496,6 +532,12 @@ window.TEA_DATA = {
         paramMax: 180,
         idealRange: [110, 140],
         idealValue: 125,
+        timeUnit: '分钟',
+        timeMin: 20,
+        timeMax: 120,
+        idealTimeRange: [40, 80],
+        idealTimeValue: 60,
+
         hint: '高温毛火快速去水，低温足火慢焙出香。',
         effects: {
           tooLow: { text: '干燥不足，水分高，不耐贮存。', quality: -15 },
@@ -613,6 +655,12 @@ window.TEA_DATA = {
         paramMax: 180,
         idealRange: [100, 130],
         idealValue: 115,
+        timeUnit: '分钟',
+        timeMin: 20,
+        timeMax: 90,
+        idealTimeRange: [35, 60],
+        idealTimeValue: 45,
+
         hint: '高温快烘，迅速终止发酵。',
         effects: {
           tooLow: { text: '干燥过慢，继续氧化发酵，品质下降。', quality: -20 },
@@ -675,6 +723,12 @@ window.TEA_DATA = {
         paramMax: 360,
         idealRange: [240, 300],
         idealValue: 270,
+        timeUnit: '分钟',
+        timeMin: 3,
+        timeMax: 15,
+        idealTimeRange: [5, 10],
+        idealTimeValue: 8,
+
         hint: '黑茶鲜叶粗老，需高温杀青。',
         effects: {
           tooLow: { text: '杀青不足，青气重，影响渥堆品质。', quality: -15 },
@@ -712,6 +766,12 @@ window.TEA_DATA = {
         paramMax: 80,
         idealRange: [45, 60],
         idealValue: 52,
+        timeUnit: '小时',
+        timeMin: 12,
+        timeMax: 72,
+        idealTimeRange: [24, 48],
+        idealTimeValue: 36,
+
         hint: '渥堆需控制堆温在45-60℃，过高"烧心"，过低发酵慢。',
         effects: {
           tooLow: { text: '堆温过低，微生物活性不足，后发酵不充分，茶汤青涩。', quality: -25 },
@@ -731,6 +791,12 @@ window.TEA_DATA = {
         paramMax: 160,
         idealRange: [80, 110],
         idealValue: 95,
+        timeUnit: '分钟',
+        timeMin: 30,
+        timeMax: 120,
+        idealTimeRange: [45, 75],
+        idealTimeValue: 60,
+
         hint: '黑茶干燥温度适中，保留微生物活性以便后期转化。',
         effects: {
           tooLow: { text: '干燥不足，含水量高，易发霉。', quality: -20 },
@@ -1078,6 +1144,8 @@ window.ACHIEVEMENTS = [
     }
   }
 ];
+
+// ============================================================
 
 // ============================================================
 
@@ -1834,6 +1902,11 @@ window.FAMOUS_TEAS = [{
         paramMax: 150,
         idealRange: [90, 110],
         idealValue: 100,
+        timeUnit: '分钟',
+        timeMin: 15,
+        timeMax: 90,
+        idealTimeRange: [30, 60],
+        idealTimeValue: 45,
         hint: '茶坯含水率降至4%~5%为窨制最佳状态，过低易碎、过高吸香差。',
         effects: {
           tooLow: { text: '复火不足，茶坯含水率高，吸香能力弱，窨制效果差。', quality: -20 },
@@ -1889,6 +1962,11 @@ window.FAMOUS_TEAS = [{
         paramMax: 150,
         idealRange: [80, 100],
         idealValue: 90,
+        timeUnit: '分钟',
+        timeMin: 20,
+        timeMax: 90,
+        idealTimeRange: [30, 60],
+        idealTimeValue: 45,
         hint: '先高后低分段烘焙，含水率降至6.5%以下。',
         effects: {
           tooLow: { text: '烘焙不足，含水率偏高，香气易散失，茶易霉变。', quality: -20 },

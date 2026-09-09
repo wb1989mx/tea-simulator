@@ -1,5 +1,5 @@
 // Service Worker - 制茶模拟器
-const CACHE_VERSION = 'v1.1.0';
+const CACHE_VERSION = 'v1.2.0';
 const SHELL_CACHE = `tea-simulator-shell-${CACHE_VERSION}`;
 const DATA_CACHE = `tea-simulator-data-${CACHE_VERSION}`;
 
