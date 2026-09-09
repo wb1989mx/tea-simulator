@@ -119,6 +119,14 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
   const GANZAO_METHODS = dl.getGanzaoMethods();
   const teaIds = dl.TEA_IDS;
 
+  // ---- 当前环境对象与工序影响（定义于 getEffectiveStep 之前，避免 TDZ） ----
+  const getEnv = () => ENVIRONMENTS.find(e => e.id === environment) || null;
+  const getEnvAdjust = (stepId) => {
+    const env = getEnv();
+    if (!env || !stepId) return null;
+    return env.stepAdjust[stepId] || null;
+  };
+
   // ---- 嫩度偏差（名优茶档时以名优茶采摘标准为基准） ----
   const getTenderDelta = () => {
     if (!pickingSelection || !currentTea) return 0;
@@ -315,14 +323,6 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
     setFinalScore(0);
     setFinalGrade('');
     if (teaId) setTeaState(dl.getInitialTeaState(teaId));
-  };
-
-  // ---- 当前环境对象与工序影响 ----
-  const getEnv = () => ENVIRONMENTS.find(e => e.id === environment) || null;
-  const getEnvAdjust = (stepId) => {
-    const env = getEnv();
-    if (!env || !stepId) return null;
-    return env.stepAdjust[stepId] || null;
   };
 
   // ---- 计算参数得分 ----
