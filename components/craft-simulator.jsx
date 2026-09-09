@@ -257,6 +257,15 @@ function CraftSimulator({ initialTeaId, onBack, onComplete, progress }) {
 
   const effectiveStep = getEffectiveStep();
 
+  // ---- 从首页直达某茶类时，也强制先设定环境前提（与「工艺模拟→选茶类」一致） ----
+  React.useEffect(() => {
+    if (initialTeaId && !environment && !showEnvPicker) {
+      setShowEnvPicker(true);
+    }
+    // 仅在挂载时执行一次
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ---- 初始化参数值（切换步骤/茶类时） ----
   React.useEffect(() => {
     if (!currentStep || !currentTea) return;
